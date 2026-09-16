@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "R16Dtlk4O1k=",
+  "dgSpecHash": "w2MCsLoWmnY=",
   "success": true,
-  "projectFilePath": "C:\\BlogPlatform\\BlogPlatform.csproj",
+  "projectFilePath": "C:\\Users\\Admin\\Downloads\\BlogPlatform-fixed\\BlogPlatform\\BlogPlatform.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Admin\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\Admin\\.nuget\\packages\\microsoft.aspnetcore.diagnostics.entityframeworkcore\\10.0.10\\microsoft.aspnetcore.diagnostics.entityframeworkcore.10.0.10.nupkg.sha512",
@@ -46,9 +46,9 @@
       "code": "NU1903",
       "level": "Warning",
       "message": "Package 'SQLitePCLRaw.lib.e_sqlite3' 2.1.11 has a known high severity vulnerability, https://github.com/advisories/GHSA-2m69-gcr7-jv3q",
-      "projectPath": "C:\\BlogPlatform\\BlogPlatform.csproj",
+      "projectPath": "C:\\Users\\Admin\\Downloads\\BlogPlatform-fixed\\BlogPlatform\\BlogPlatform.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\BlogPlatform\\BlogPlatform.csproj",
+      "filePath": "C:\\Users\\Admin\\Downloads\\BlogPlatform-fixed\\BlogPlatform\\BlogPlatform.csproj",
       "libraryId": "SQLitePCLRaw.lib.e_sqlite3",
       "targetGraphs": [
         "net10.0"

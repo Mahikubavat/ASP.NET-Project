@@ -1,0 +1,35 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace BlogPlatform.Models;
+
+public enum PostStatus { Draft = 0, Published = 1 }
+
+public class Post
+{
+    [Key]
+    public int Id { get; set; }
+
+    [Required]
+    [MaxLength(200)]
+    public string Title { get; set; } = null!;
+
+    [Required]
+    public string Content { get; set; } = null!;
+
+    public string? FeaturedImageUrl { get; set; }
+
+    public string? AuthorId { get; set; }
+    public ApplicationUser? Author { get; set; }
+
+    public int? CategoryId { get; set; }
+    public Category? Category { get; set; }
+
+    public PostStatus Status { get; set; } = PostStatus.Draft;
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
+
+    public ICollection<PostTag>? PostTags { get; set; }
+    public ICollection<Comment>? Comments { get; set; }
+}

@@ -1,8 +1,44 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+﻿@model IEnumerable<BlogPlatform.Models.Post>?
+
+@{
+    ViewData["Title"] = "Home";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<h1 class="mb-4">Latest Posts</h1>
+
+@if (Model == null || !Model.Any())
+{
+    <div class="alert alert-info">No posts available yet.</div>
+}
+else
+{
+    <div class="row">
+        @foreach (var post in Model)
+        {
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    @if (!string.IsNullOrEmpty(post.FeaturedImageUrl))
+                    {
+                        <img src="@post.FeaturedImageUrl" class="card-img-top" alt="@post.Title" />
+                    }
+                    <div class="card-body">
+                        <h5 class="card-title">@post.Title</h5>
+                        <p class="card-text">@Html.Raw(post.Content?.Length > 200 ? post.Content.Substring(0, 200) + "..." : post.Content)</p>
+                        <div class="d-flex gap-2">
+                            <a class="btn btn-primary" asp-controller="Posts" asp-action="Details" asp-route-id="@post.Id">Read more</a>
+                            @if (User?.Identity?.IsAuthenticated == true && (User.IsInRole("Writer") || User.IsInRole("Admin")))
+                            {
+                                <a class="btn btn-outline-success" asp-controller="Posts" asp-action="Edit" asp-route-id="@post.Id">Edit</a>
+                                <a class="btn btn-outline-danger" asp-controller="Posts" asp-action="Delete" asp-route-id="@post.Id">Delete</a>
+                            }
+                        </div>
+                    </div>
+                    <div class="card-footer text-muted">
+                        @if (post.Author != null) { <span>By @post.Author.UserName</span> }
+                        <span class="float-end">@post.CreatedAt.ToLocalTime().ToString("g")</span>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
