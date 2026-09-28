@@ -1,62 +1,113 @@
 @page
 @model BlogPlatform.Areas.Identity.Pages.Account.RegisterModel
 @{
-    ViewData["Title"] = "Register";
+    ViewData["Title"] = "Create Account";
 }
 
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h2 class="card-title mb-4">Create an account</h2>
+<div class="row justify-content-center my-4">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-lg border-0 rounded-4 overflow-hidden bg-white">
+            <div class="card-header border-0 bg-transparent text-center pt-4 pb-2">
+                <div class="brand-icon mx-auto mb-3 shadow-sm" style="width: 52px; height: 52px; font-size: 1.75rem;">
+                    <i class="bi bi-journal-richtext"></i>
+                </div>
+                <h2 class="h4 fw-bold text-dark mb-1">Create your account</h2>
+                <p class="text-muted small">Join BlogPlatform to write, read, and connect with other thinkers.</p>
+            </div>
 
-                <form method="post" asp-antiforgery="false">
-                    @Html.AntiForgeryToken()
-                    <div asp-validation-summary="All" class="text-danger"></div>
+            <div class="card-body p-4 pt-2">
+                <form id="registerForm" asp-route-returnUrl="@Model.ReturnUrl" method="post">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small mb-3 shadow-sm" role="alert"></div>
+
+                    <!-- Email Input -->
                     <div class="mb-3">
-                        <label asp-for="Input.Email" class="form-label">Email</label>
-                        <input asp-for="Input.Email" class="form-control" placeholder="name@example.com" autocomplete="email" />
-                        <span asp-validation-for="Input.Email" class="text-danger"></span>
+                        <label asp-for="Input.Email" class="form-label fw-semibold small text-muted">Email Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0 text-muted">
+                                <i class="bi bi-envelope"></i>
+                            </span>
+                            <input asp-for="Input.Email" class="form-control border-start-0 ps-0" placeholder="name@example.com" autocomplete="username" required />
+                        </div>
+                        <span asp-validation-for="Input.Email" class="text-danger smaller" style="font-size:0.8rem;"></span>
                     </div>
 
+                    <!-- Password Input -->
                     <div class="mb-3">
-                        <label asp-for="Input.Password" class="form-label">Password</label>
+                        <label asp-for="Input.Password" class="form-label fw-semibold small text-muted">Password</label>
                         <div class="input-group">
-                            <input asp-for="Input.Password" type="password" class="form-control" id="passwordInput" autocomplete="new-password" />
-                            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="passwordInput" aria-label="Show password">
-                                <i class="bi bi-eye"></i>
+                            <span class="input-group-text bg-light border-end-0 text-muted">
+                                <i class="bi bi-lock"></i>
+                            </span>
+                            <input asp-for="Input.Password" type="password" class="form-control border-start-0 border-end-0 ps-0" placeholder="Minimum 6 characters" autocomplete="new-password" id="regPassword" required />
+                            <button class="btn btn-outline-light border border-start-0 text-muted" type="button" id="toggleRegPasswordBtn">
+                                <i class="bi bi-eye" id="toggleRegPasswordIcon"></i>
                             </button>
                         </div>
-                        <span asp-validation-for="Input.Password" class="text-danger"></span>
+                        <span asp-validation-for="Input.Password" class="text-danger smaller" style="font-size:0.8rem;"></span>
                     </div>
 
-                    <div class="mb-3">
-                        <label asp-for="Input.ConfirmPassword" class="form-label">Confirm password</label>
+                    <!-- Confirm Password Input -->
+                    <div class="mb-4">
+                        <label asp-for="Input.ConfirmPassword" class="form-label fw-semibold small text-muted">Confirm Password</label>
                         <div class="input-group">
-                            <input asp-for="Input.ConfirmPassword" type="password" class="form-control" id="confirmPasswordInput" autocomplete="new-password" />
-                            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="confirmPasswordInput" aria-label="Show password">
-                                <i class="bi bi-eye"></i>
+                            <span class="input-group-text bg-light border-end-0 text-muted">
+                                <i class="bi bi-lock-fill"></i>
+                            </span>
+                            <input asp-for="Input.ConfirmPassword" type="password" class="form-control border-start-0 border-end-0 ps-0" placeholder="Repeat your password" autocomplete="new-password" id="regConfirmPassword" required />
+                            <button class="btn btn-outline-light border border-start-0 text-muted" type="button" id="toggleRegConfirmPasswordBtn">
+                                <i class="bi bi-eye" id="toggleRegConfirmPasswordIcon"></i>
                             </button>
                         </div>
-                        <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+                        <span asp-validation-for="Input.ConfirmPassword" class="text-danger smaller" style="font-size:0.8rem;"></span>
                     </div>
 
-                    <fieldset class="mb-3">
-                        <legend class="col-form-label">Register as</legend>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="Input.SelectedRole" value="Writer" id="roleWriter" @(Model.Input.SelectedRole == "Writer" ? "checked" : null) />
-                            <label class="form-check-label" for="roleWriter">Writer (can create and edit posts)</label>
+                    <!-- Role Selection Cards -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small text-muted mb-2">I want to join as:</label>
+                        <div class="row g-2">
+                            <div class="col-sm-6">
+                                <label class="card h-100 p-3 border rounded-3 text-start cursor-pointer position-relative select-role-card" for="roleWriter">
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <span class="fw-bold small text-dark d-flex align-items-center gap-1">
+                                            <i class="bi bi-pencil-square text-primary"></i> Writer / Author
+                                        </span>
+                                        <input class="form-check-input mt-0" type="radio" name="Input.SelectedRole" value="Writer" id="roleWriter" @(Model.Input.SelectedRole == "Writer" ? "checked" : null) />
+                                    </div>
+                                    <div class="text-muted smaller" style="font-size: 0.78rem;">
+                                        Publish, edit, and manage articles and interact with readers.
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="card h-100 p-3 border rounded-3 text-start cursor-pointer position-relative select-role-card" for="roleReader">
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <span class="fw-bold small text-dark d-flex align-items-center gap-1">
+                                            <i class="bi bi-book text-success"></i> Reader
+                                        </span>
+                                        <input class="form-check-input mt-0" type="radio" name="Input.SelectedRole" value="Reader" id="roleReader" @(Model.Input.SelectedRole == "Reader" ? "checked" : null) />
+                                    </div>
+                                    <div class="text-muted smaller" style="font-size: 0.78rem;">
+                                        Explore articles, like, comment, and participate in discussions.
+                                    </div>
+                                </label>
+                            </div>
                         </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="Input.SelectedRole" value="Reader" id="roleReader" @(Model.Input.SelectedRole == "Reader" ? "checked" : null) />
-                            <label class="form-check-label" for="roleReader">Reader (can view posts)</label>
-                        </div>
-                        <span asp-validation-for="Input.SelectedRole" class="text-danger"></span>
-                    </fieldset>
+                        <span asp-validation-for="Input.SelectedRole" class="text-danger smaller" style="font-size:0.8rem;"></span>
+                    </div>
 
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">Register</button>
-                        <a asp-page="/Account/Login" class="btn btn-link">Already have an account?</a>
+                    <!-- Submit Button -->
+                    <div class="d-grid mb-3">
+                        <button id="registerSubmit" type="submit" class="btn btn-primary-modern py-2 fw-semibold shadow-sm">
+                            <i class="bi bi-person-check me-1"></i> Create Account
+                        </button>
+                    </div>
+
+                    <!-- Switch to Login -->
+                    <div class="text-center pt-2 border-top">
+                        <span class="text-muted small">Already have an account?</span>
+                        <a asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl" class="fw-bold text-primary text-decoration-none small ms-1">
+                            Sign in here
+                        </a>
                     </div>
                 </form>
             </div>
@@ -67,22 +118,23 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        // Show/hide password toggles
-        document.querySelectorAll('.toggle-password').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var input = document.getElementById(btn.getAttribute('data-target'));
-                var icon = btn.querySelector('i');
+        function setupToggle(btnId, inputId, iconId) {
+            var btn = document.getElementById(btnId);
+            if (!btn) return;
+            btn.addEventListener('click', function() {
+                var input = document.getElementById(inputId);
+                var icon = document.getElementById(iconId);
                 if (input.type === 'password') {
                     input.type = 'text';
-                    icon.classList.remove('bi-eye');
-                    icon.classList.add('bi-eye-slash');
+                    icon.className = 'bi bi-eye-slash';
                 } else {
                     input.type = 'password';
-                    icon.classList.remove('bi-eye-slash');
-                    icon.classList.add('bi-eye');
+                    icon.className = 'bi bi-eye';
                 }
             });
-        });
+        }
 
+        setupToggle('toggleRegPasswordBtn', 'regPassword', 'toggleRegPasswordIcon');
+        setupToggle('toggleRegConfirmPasswordBtn', 'regConfirmPassword', 'toggleRegConfirmPasswordIcon');
     </script>
 }

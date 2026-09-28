@@ -1,0 +1,30 @@
+@model IEnumerable<BlogPlatform.Models.Category>?
+
+@{
+    var currentQ = Context.Request.Query["q"].ToString();
+    var currentCategory = Context.Request.Query["categoryId"].ToString();
+}
+
+<form class="d-flex align-items-center" method="get" asp-controller="Posts" asp-action="Index">
+    <div class="input-group input-group-sm shadow-sm rounded-pill overflow-hidden bg-white">
+        <input name="q" class="form-control border-0 ps-3" placeholder="Search articles..." value="@currentQ" />
+        <select name="categoryId" class="form-select border-0 border-start text-secondary" style="max-width: 135px; font-size: 0.8rem;">
+            <option value="">All Topics</option>
+            @if (Model != null)
+            {
+                foreach (var c in Model)
+                {
+                    if (currentCategory == c.Id.ToString())
+                    {
+                        <option value="@c.Id" selected>@c.Name</option>
+                    }
+                    else
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                }
+            }
+        </select>
+        <button class="btn btn-white text-primary border-0 px-3" type="submit"><i class="bi bi-search"></i></button>
+    </div>
+</form>

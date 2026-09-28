@@ -1,0 +1,111 @@
+@page
+@model BlogPlatform.Areas.Identity.Pages.Account.LoginModel
+
+@{
+    ViewData["Title"] = "Sign In";
+}
+
+<div class="row justify-content-center my-4">
+    <div class="col-md-7 col-lg-5">
+        <div class="card shadow-lg border-0 rounded-4 overflow-hidden bg-white">
+            <div class="card-header border-0 bg-transparent text-center pt-4 pb-2">
+                <div class="brand-icon mx-auto mb-3 shadow-sm" style="width: 52px; height: 52px; font-size: 1.75rem;">
+                    <i class="bi bi-journal-richtext"></i>
+                </div>
+                <h2 class="h4 fw-bold text-dark mb-1">Welcome back</h2>
+                <p class="text-muted small">Sign in to your BlogPlatform account</p>
+            </div>
+
+            <div class="card-body p-4 pt-2">
+                <form id="account" method="post">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small mb-3 shadow-sm" role="alert"></div>
+
+                    <!-- Email Input -->
+                    <div class="mb-3">
+                        <label asp-for="Input.Email" class="form-label fw-semibold small text-muted">Email Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0 text-muted">
+                                <i class="bi bi-envelope"></i>
+                            </span>
+                            <input asp-for="Input.Email" class="form-control border-start-0 ps-0" placeholder="you@example.com" autocomplete="username" id="loginEmail" required />
+                        </div>
+                        <span asp-validation-for="Input.Email" class="text-danger smaller" style="font-size:0.8rem;"></span>
+                    </div>
+
+                    <!-- Password Input -->
+                    <div class="mb-3">
+                        <label asp-for="Input.Password" class="form-label fw-semibold small text-muted">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0 text-muted">
+                                <i class="bi bi-lock"></i>
+                            </span>
+                            <input asp-for="Input.Password" type="password" class="form-control border-start-0 border-end-0 ps-0" placeholder="Enter your password" autocomplete="current-password" id="loginPassword" required />
+                            <button class="btn btn-outline-light border border-start-0 text-muted" type="button" id="togglePasswordBtn">
+                                <i class="bi bi-eye" id="togglePasswordIcon"></i>
+                            </button>
+                        </div>
+                        <span asp-validation-for="Input.Password" class="text-danger smaller" style="font-size:0.8rem;"></span>
+                    </div>
+
+                    <!-- Remember Me -->
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" asp-for="Input.RememberMe" id="rememberMeCheck" />
+                            <label class="form-check-label small text-muted" for="rememberMeCheck">
+                                Remember me
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="d-grid mb-3">
+                        <button id="login-submit" type="submit" class="btn btn-primary-modern py-2 fw-semibold shadow-sm">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+                        </button>
+                    </div>
+
+                    <!-- Quick Demo Credentials helper -->
+                    <div class="p-3 bg-light rounded-3 border mb-3 small text-muted text-center">
+                        <div class="fw-semibold text-secondary mb-1">
+                            <i class="bi bi-shield-lock me-1 text-primary"></i> Default Administrator
+                        </div>
+                        <code class="text-dark small d-block">admin@example.com / Admin123!</code>
+                        <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 mt-1 small" onclick="fillAdminCredentials()">
+                            Use admin credentials
+                        </button>
+                    </div>
+
+                    <!-- Switch to Register -->
+                    <div class="text-center pt-2 border-top">
+                        <span class="text-muted small">Don't have an account?</span>
+                        <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" class="fw-bold text-primary text-decoration-none small ms-1">
+                            Sign up here
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.getElementById('togglePasswordBtn').addEventListener('click', function() {
+            var passInput = document.getElementById('loginPassword');
+            var icon = document.getElementById('togglePasswordIcon');
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                icon.className = 'bi bi-eye-slash';
+            } else {
+                passInput.type = 'password';
+                icon.className = 'bi bi-eye';
+            }
+        });
+
+        function fillAdminCredentials() {
+            document.getElementById('loginEmail').value = 'admin@example.com';
+            document.getElementById('loginPassword').value = 'Admin123!';
+        }
+    </script>
+}

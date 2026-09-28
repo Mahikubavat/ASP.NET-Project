@@ -15,7 +15,11 @@ public class Comment
     public string? AuthorId { get; set; }
     public ApplicationUser? Author { get; set; }
 
+    public int? ParentCommentId { get; set; }
+    public Comment? ParentComment { get; set; }
+    public ICollection<Comment> Replies { get; set; } = new List<Comment>();
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public bool IsApproved { get; set; } = false;
+    public bool IsApproved { get; set; } = true;
 }

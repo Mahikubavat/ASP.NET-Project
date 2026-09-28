@@ -14,6 +14,9 @@ public class Post
     [MaxLength(200)]
     public string Title { get; set; } = null!;
 
+    [MaxLength(200)]
+    public string? Slug { get; set; }
+
     [Required]
     public string Content { get; set; } = null!;
 
@@ -27,9 +30,17 @@ public class Post
 
     public PostStatus Status { get; set; } = PostStatus.Draft;
 
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public bool IsPublished
+    {
+        get => Status == PostStatus.Published;
+        set => Status = value ? PostStatus.Published : PostStatus.Draft;
+    }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
     public ICollection<PostTag>? PostTags { get; set; }
     public ICollection<Comment>? Comments { get; set; }
+    public ICollection<Like>? Likes { get; set; }
 }

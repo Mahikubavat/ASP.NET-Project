@@ -1,26 +1,72 @@
 @model IEnumerable<BlogPlatform.Models.Post>?
 
 @{
-    ViewData["Title"] = "Manage Posts";
+    ViewData["Title"] = "Explore Posts";
+    string? currentTag = ViewBag.CurrentTag as string;
+    string? currentSearch = ViewBag.CurrentSearch as string;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 mb-0">Posts</h1>
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
     <div>
-        <a class="btn btn-outline-secondary me-2" asp-action="Index"><i class="bi bi-arrow-repeat"></i> Refresh</a>
+        <h1 class="h3 fw-bold mb-1 d-flex align-items-center gap-2">
+            <i class="bi bi-grid-fill text-primary"></i> Explore Articles
+        </h1>
+        <p class="text-muted small mb-0">Discover diverse perspectives, tech insights, and thoughtful stories.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
         @if (User?.Identity?.IsAuthenticated == true && (User.IsInRole("Writer") || User.IsInRole("Admin")))
         {
-            <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg"></i> New Post</a>
+            <a class="btn btn-outline-secondary btn-sm shadow-sm" asp-action="Manage">
+                <i class="bi bi-kanban me-1"></i> Manage My Posts
+            </a>
+            <a class="btn btn-primary-modern btn-sm shadow-sm" asp-action="Create">
+                <i class="bi bi-plus-lg me-1"></i> New Article
+            </a>
         }
     </div>
 </div>
 
+<!-- Active Filter Pills (if any) -->
+@if (!string.IsNullOrEmpty(currentTag) || !string.IsNullOrEmpty(currentSearch))
+{
+    <div class="alert alert-info py-2 px-3 mb-4 rounded-3 d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2 small">
+            <span class="fw-semibold">Active filters:</span>
+            @if (!string.IsNullOrEmpty(currentTag))
+            {
+                <span class="badge bg-primary">Tag: #@currentTag</span>
+            }
+            @if (!string.IsNullOrEmpty(currentSearch))
+            {
+                <span class="badge bg-secondary">Search: "@currentSearch"</span>
+            }
+        </div>
+        <a asp-action="Index" class="btn btn-sm btn-link text-decoration-none p-0 text-dark">
+            <i class="bi bi-x-circle me-1"></i> Clear filters
+        </a>
+    </div>
+}
+
 @if (Model == null || !Model.Any())
 {
-    <div class="empty-state text-center">
-        <h4 class="mb-2">No posts yet</h4>
-        <p class="text-muted mb-3">Create your first post to get started.</p>
-        <a class="btn btn-lg btn-primary" asp-action="Create"><i class="bi bi-plus-lg"></i> Create Post</a>
+    <div class="card border-0 shadow-sm rounded-4 p-5 text-center my-4">
+        <div class="py-4">
+            <i class="bi bi-file-earmark-text text-secondary display-3 d-block mb-3"></i>
+            <h4 class="fw-bold mb-2">No posts found</h4>
+            <p class="text-muted mb-4">Try clearing your search filters or create the very first post!</p>
+            @if (User?.Identity?.IsAuthenticated == true && (User.IsInRole("Writer") || User.IsInRole("Admin")))
+            {
+                <a class="btn btn-primary-modern px-4" asp-action="Create">
+                    <i class="bi bi-pencil-square me-1"></i> Write a Post
+                </a>
+            }
+            else
+            {
+                <a class="btn btn-outline-secondary" asp-action="Index">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Reset Filters
+                </a>
+            }
+        </div>
     </div>
 }
 else
@@ -29,32 +75,101 @@ else
         @foreach (var post in Model)
         {
             <div class="col-md-6 col-lg-4">
-                <div class="card h-100 shadow-sm">
+                <div class="card h-100 modern-card shadow-sm d-flex flex-column">
                     @if (!string.IsNullOrEmpty(post.FeaturedImageUrl))
                     {
-                        <img src="@post.FeaturedImageUrl" class="card-img-top" style="object-fit:cover; height:180px;" alt="@post.Title" />
-                    }
-                    <div class="card-body d-flex flex-column">
-                        <h5 class="card-title">@post.Title</h5>
-                        <p class="card-text text-truncate">@Html.Raw(post.Content?.Length > 180 ? post.Content.Substring(0, 180) + "..." : post.Content)</p>
-                        <div class="mt-2">
+                        <div class="card-img-wrapper">
+                            <a asp-action="Details" asp-route-id="@post.Id">
+                                <img src="@post.FeaturedImageUrl" alt="@post.Title" />
+                            </a>
                             @if (post.Category != null)
                             {
-                                <span class="badge bg-secondary me-1">@post.Category.Name</span>
+                                <a asp-action="Index" asp-route-categoryId="@post.CategoryId" class="card-category-badge">
+                                    @post.Category.Name
+                                </a>
                             }
-                            <span class="badge @(post.Status == BlogPlatform.Models.PostStatus.Published ? "bg-success" : "bg-warning text-dark")">@post.Status</span>
                         </div>
-                        <div class="mt-auto pt-3 d-flex justify-content-between align-items-center">
-                            <div class="card-meta text-muted">@post.CreatedAt.ToLocalTime().ToString("g") @if (post.Author != null) { <span>• @post.Author.UserName</span> }</div>
-                            <div>
-                                <a class="btn btn-sm btn-outline-primary me-1" asp-action="Details" asp-route-id="@post.Id"><i class="bi bi-eye"></i></a>
-                                @if (User?.Identity?.IsAuthenticated == true && (User.IsInRole("Writer") || User.IsInRole("Admin")))
+                    }
+
+                    <div class="card-body d-flex flex-column p-4">
+                        @if (string.IsNullOrEmpty(post.FeaturedImageUrl) && post.Category != null)
+                        {
+                            <div class="mb-2">
+                                <a asp-action="Index" asp-route-categoryId="@post.CategoryId" class="badge bg-primary-subtle text-primary rounded-pill text-decoration-none">
+                                    @post.Category.Name
+                                </a>
+                            </div>
+                        }
+
+                        <h5 class="card-title fw-bold mb-2">
+                            <a asp-action="Details" asp-route-id="@post.Id" class="text-dark text-decoration-none">
+                                @post.Title
+                            </a>
+                        </h5>
+
+                        <p class="card-text text-muted small flex-grow-1 mb-3">
+                            @{
+                                var rawContent = post.Content ?? "";
+                                var plainText = System.Text.RegularExpressions.Regex.Replace(rawContent, "<.*?>", string.Empty);
+                                var snippet = plainText.Length > 110 ? plainText.Substring(0, 110) + "..." : plainText;
+                            }
+                            @snippet
+                        </p>
+
+                        <!-- Post Tags Visible on Post Card -->
+                        @if (post.PostTags != null && post.PostTags.Any())
+                        {
+                            <div class="d-flex flex-wrap gap-1 mb-3">
+                                @foreach (var pt in post.PostTags.Take(3))
                                 {
-                                    <a class="btn btn-sm btn-outline-success me-1" asp-action="Edit" asp-route-id="@post.Id"><i class="bi bi-pencil"></i></a>
-                                    <a class="btn btn-sm btn-outline-danger" asp-action="Delete" asp-route-id="@post.Id"><i class="bi bi-trash"></i></a>
+                                    if (pt.Tag != null)
+                                    {
+                                        <a asp-action="Index" asp-route-tag="@pt.Tag.Name" class="tag-pill" style="font-size:0.72rem; padding: 0.2rem 0.5rem;">
+                                            #@pt.Tag.Name
+                                        </a>
+                                    }
+                                }
+                                @if (post.PostTags.Count > 3)
+                                {
+                                    <span class="text-muted smaller" style="font-size:0.75rem;">+@(post.PostTags.Count - 3) more</span>
                                 }
                             </div>
+                        }
+
+                        <!-- Author & Metrics Footer -->
+                        <div class="pt-3 border-top mt-auto d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="avatar-initials-sm" style="width: 28px; height: 28px; font-size: 0.75rem;">
+                                    @((post.Author?.UserName?.Length > 0 ? post.Author.UserName[0].ToString().ToUpper() : "A"))
+                                </span>
+                                <div class="text-muted smaller" style="font-size: 0.78rem;">
+                                    <div class="fw-semibold text-dark text-truncate" style="max-width: 100px;">@(post.Author?.UserName ?? "Writer")</div>
+                                    <div>@post.CreatedAt.ToLocalTime().ToString("MMM dd")</div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex align-items-center gap-2 text-muted small">
+                                <span title="Likes"><i class="bi bi-heart text-danger"></i> @(post.Likes?.Count ?? 0)</span>
+                                <span title="Comments"><i class="bi bi-chat-text text-secondary"></i> @(post.Comments?.Count ?? 0)</span>
+                            </div>
                         </div>
+
+                        <!-- Author Controls if applicable -->
+                        @{
+                            var currentUserId = User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                            var canEdit = User?.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || post.AuthorId == currentUserId);
+                        }
+                        @if (canEdit)
+                        {
+                            <div class="mt-2 pt-2 border-top d-flex justify-content-end gap-1">
+                                <a class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:0.75rem;" asp-action="Edit" asp-route-id="@post.Id">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
+                                <a class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:0.75rem;" asp-action="Delete" asp-route-id="@post.Id">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>

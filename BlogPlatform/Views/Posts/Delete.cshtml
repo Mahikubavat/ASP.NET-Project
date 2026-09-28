@@ -1,26 +1,52 @@
 @model BlogPlatform.Models.Post
 
 @{
-    ViewData["Title"] = "Delete Post";
+    ViewData["Title"] = "Delete Post - " + Model.Title;
 }
 
-<div class="card border-danger shadow-sm">
-    <div class="card-body">
-        <h2 class="card-title text-danger">Delete Post</h2>
-        <p class="text-muted">Are you sure you want to permanently delete the following post?</p>
-
-        <div class="mb-3">
-            <h4>@Model.Title</h4>
-            <p class="text-muted">@Model.CreatedAt.ToLocalTime().ToString("f") @if (Model.Author != null) { <span>• @Model.Author.UserName</span> }</p>
-            <div class="border rounded p-3 mb-3">@Html.Raw(Model.Content)</div>
-        </div>
-
-        <form asp-action="Delete" method="post">
-            <input type="hidden" asp-for="Id" />
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Delete</button>
-                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-danger border-opacity-25 rounded-4">
+            <div class="card-header bg-danger bg-opacity-10 text-danger border-bottom border-danger border-opacity-25 py-3">
+                <h4 class="mb-0 fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-exclamation-triangle-fill"></i> Confirm Post Deletion
+                </h4>
             </div>
-        </form>
+            <div class="card-body p-4">
+                <p class="text-secondary mb-4">
+                    Are you sure you want to permanently delete this post? This action cannot be undone and will remove all associated comments and likes.
+                </p>
+
+                <div class="bg-light p-3 rounded-3 border mb-4">
+                    <h5 class="fw-bold mb-1">@Model.Title</h5>
+                    <div class="text-muted smaller mb-2">
+                        Published on @Model.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")
+                        @if (Model.Author != null)
+                        {
+                            <span>by @Model.Author.UserName</span>
+                        }
+                    </div>
+                    <div class="text-muted small">
+                        @{
+                            var text = System.Text.RegularExpressions.Regex.Replace(Model.Content ?? "", "<.*?>", string.Empty);
+                            var snippet = text.Length > 160 ? text.Substring(0, 160) + "..." : text;
+                        }
+                        @snippet
+                    </div>
+                </div>
+
+                <form asp-action="Delete" method="post">
+                    <input type="hidden" asp-for="Id" />
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger px-4 rounded-pill">
+                            <i class="bi bi-trash me-1"></i> Yes, Delete Post
+                        </button>
+                        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary rounded-pill px-3">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>

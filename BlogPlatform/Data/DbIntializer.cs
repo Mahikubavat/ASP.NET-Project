@@ -31,7 +31,9 @@ namespace BlogPlatform.Data
                     UserName = "admin@example.com",
                     Email = adminEmail,
                     EmailConfirmed = true,
-                    Bio = "Administrator account"
+                    Bio = "Administrator account",
+                    NotifyOnLike = true,
+                    NotifyOnComment = true
                 };
                 var result = await userManager.CreateAsync(admin, "Admin123!");
                 if (result.Succeeded)
@@ -46,13 +48,30 @@ namespace BlogPlatform.Data
             if (db.Categories == null || await db.Categories.AnyAsync())
                 return;
 
-            var defaults = new[] { "Technology", "Lifestyle", "Travel", "Food", "Business" };
+            var defaults = new[] { "Technology", "Lifestyle", "Travel", "Food", "Business", "Health", "Education" };
             foreach (var name in defaults)
             {
-                db.Categories!.Add(new Category
+                db.Categories.Add(new Category
                 {
                     Name = name,
-                    Slug = name.ToLowerInvariant()
+                    Slug = name.ToLowerInvariant().Replace(" ", "-")
+                });
+            }
+            await db.SaveChangesAsync();
+        }
+
+        public static async Task SeedTagsAsync(ApplicationDbContext db)
+        {
+            if (db.Tags == null || await db.Tags.AnyAsync())
+                return;
+
+            var defaults = new[] { "Technology", "Programming", "WebDev", "AI", "Design", "Tutorial", "Career", "Productivity", "Cloud", "Security", "General", "Tips" };
+            foreach (var name in defaults)
+            {
+                db.Tags.Add(new Tag
+                {
+                    Name = name,
+                    Slug = name.ToLowerInvariant().Replace(" & ", "-").Replace(" ", "-")
                 });
             }
             await db.SaveChangesAsync();

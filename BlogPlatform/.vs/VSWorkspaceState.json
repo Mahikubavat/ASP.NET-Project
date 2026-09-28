@@ -1,7 +1,9 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\Controllers",
+    "\\Data",
+    "\\Models"
   ],
-  "SelectedNode": "\\BlogPlatform.csproj",
   "PreviewInSolutionExplorer": false
 }

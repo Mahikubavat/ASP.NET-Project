@@ -21,10 +21,16 @@ public class HomeController : Controller
         var posts = await _db.Posts!
             .Where(p => p.Status == PostStatus.Published)
             .OrderByDescending(p => p.CreatedAt)
-            .Take(5)
+            .Take(6)
             .Include(p => p.Author)
             .Include(p => p.Category)
+            .Include(p => p.PostTags)!.ThenInclude(pt => pt.Tag)
+            .Include(p => p.Likes)
+            .Include(p => p.Comments)
             .ToListAsync();
+
+        ViewBag.Categories = await _db.Categories!.OrderBy(c => c.Name).Take(8).ToListAsync();
+        ViewBag.PopularTags = await _db.Tags!.OrderBy(t => t.Name).Take(10).ToListAsync();
 
         return View(posts);
     }

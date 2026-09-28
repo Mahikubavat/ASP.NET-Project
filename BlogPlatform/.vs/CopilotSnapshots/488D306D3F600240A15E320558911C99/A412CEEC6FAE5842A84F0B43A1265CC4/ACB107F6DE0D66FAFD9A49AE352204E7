@@ -1,0 +1,20 @@
+﻿@model IEnumerable<BlogPlatform.Models.Category>
+
+<form class="d-flex" method="get" asp-controller="Posts" asp-action="Index">
+    <input name="q" class="form-control me-2" placeholder="Search posts..." value="@Context.Request.Query["q"]" />
+    <select name="categoryId" class="form-select me-2">
+        <option value="">All Categories</option>
+    @foreach (var c in Model)
+    {
+        if (Context.Request.Query["categoryId"] == c.Id.ToString())
+        {
+            <option value="@c.Id" selected>@c.Name</option>
+        }
+        else
+        {
+            <option value="@c.Id">@c.Name</option>
+        }
+    }
+    </select>
+    <button class="btn btn-light" type="submit"><i class="bi bi-search"></i></button>
+</form>

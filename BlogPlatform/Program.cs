@@ -1,5 +1,6 @@
 using BlogPlatform.Data;
 using BlogPlatform.Models;
+using BlogPlatform.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -14,18 +15,17 @@ builder.WebHost.ConfigureKestrel(options =>
     options.Limits.MaxRequestHeaderCount = 200;
 });
 
-// 1. Register Database Context (uses a local SQLite file: app.db)
+// 1. Register Database Context
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(connectionString));
+    options.UseSqlServer(connectionString));
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 // Persist Data Protection keys to a stable folder next to the project so antiforgery/session
-// cookies stay valid across app restarts (otherwise every restart invalidates in-flight forms,
-// which surfaces to the user as an "HTTP ERROR 400" when they submit).
+// cookies stay valid across app restarts
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "Keys")))
     .SetApplicationName("BlogPlatform");
@@ -41,9 +41,13 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => {
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
+// File storage and Notification services
+builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+
 var app = builder.Build();
 
-// 3. Create the database (if missing) and seed roles/admin/categories on startup
+// 3. Create/migrate the database and seed roles/admin/categories/tags on startup
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -52,6 +56,7 @@ using (var scope = app.Services.CreateScope())
 
     await DbInitializer.SeedRolesAndAdminAsync(services);
     await DbInitializer.SeedCategoriesAsync(db);
+    await DbInitializer.SeedTagsAsync(db);
 }
 
 // Configure HTTP pipeline

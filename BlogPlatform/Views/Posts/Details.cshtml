@@ -2,38 +2,401 @@
 
 @{
     ViewData["Title"] = Model?.Title ?? "Post Details";
+    var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    bool isLiked = Model?.Likes != null && Model.Likes.Any(l => l.UserId == currentUserId);
+    int likeCount = Model?.Likes?.Count ?? 0;
+    
+    // Top-level comments (ParentCommentId == null)
+    var topLevelComments = Model?.Comments?
+        .Where(c => c.ParentCommentId == null)
+        .OrderByDescending(c => c.CreatedAt)
+        .ToList() ?? new List<BlogPlatform.Models.Comment>();
+
+    int totalComments = Model?.Comments?.Count ?? 0;
+    
+    // Estimate reading time (~200 words per minute)
+    int wordCount = string.IsNullOrWhiteSpace(Model?.Content) ? 0 : Model.Content.Split(new[] { ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
+    int readTimeMinutes = Math.Max(1, (int)Math.Ceiling(wordCount / 200.0));
 }
 
-<article class="card shadow-sm">
-    @if (!string.IsNullOrEmpty(Model.FeaturedImageUrl))
-    {
-        <img src="@Model.FeaturedImageUrl" class="card-img-top" style="object-fit:cover; height:320px;" alt="@Model.Title" />
-    }
-    <div class="card-body">
-        <h1 class="card-title">@Model.Title</h1>
-        <div class="mb-3 text-muted">
-            <small>@Model.CreatedAt.ToLocalTime().ToString("f")</small>
-            @if (Model.Author != null) { <span class="ms-2">• @Model.Author.UserName</span> }
-            @if (Model.Category != null) { <span class="badge bg-secondary ms-3">@Model.Category.Name</span> }
-        </div>
+<article class="mx-auto" style="max-width: 860px;">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index" class="text-decoration-none text-muted">Home</a></li>
+            <li class="breadcrumb-item"><a asp-controller="Posts" asp-action="Index" class="text-decoration-none text-muted">Posts</a></li>
+            @if (Model?.Category != null)
+            {
+                <li class="breadcrumb-item">
+                    <a asp-controller="Posts" asp-action="Index" asp-route-categoryId="@Model.CategoryId" class="text-decoration-none text-primary">
+                        @Model.Category.Name
+                    </a>
+                </li>
+            }
+            <li class="breadcrumb-item active text-truncate" aria-current="page" style="max-width: 250px;">@Model?.Title</li>
+        </ol>
+    </nav>
 
-        <div class="card-text">@Html.Raw(Model.Content)</div>
-    </div>
-    <div class="card-footer d-flex justify-content-between">
-        <div>
-            <a class="btn btn-outline-secondary" asp-action="Index"><i class="bi bi-arrow-left"></i> Back</a>
-        </div>
-        <div>
+    <!-- Post Header -->
+    <header class="mb-4">
+        @if (Model?.Category != null)
+        {
+            <div class="mb-2">
+                <a asp-controller="Posts" asp-action="Index" asp-route-categoryId="@Model.CategoryId" class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2 text-decoration-none fw-semibold">
+                    <i class="bi bi-folder2 me-1"></i> @Model.Category.Name
+                </a>
+                @if (Model.Status == BlogPlatform.Models.PostStatus.Draft)
+                {
+                    <span class="badge bg-warning text-dark rounded-pill px-3 py-2 ms-1">Draft</span>
+                }
+            </div>
+        }
+
+        <h1 class="display-5 fw-bold text-dark mb-3" style="line-height: 1.25;">@Model?.Title</h1>
+
+        <!-- Author Bar & Metadata -->
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 pb-3 border-bottom">
+            <div class="d-flex align-items-center gap-3">
+                <a asp-controller="Profile" asp-action="Public" asp-route-id="@Model?.AuthorId" class="text-decoration-none">
+                    @if (!string.IsNullOrEmpty(Model?.Author?.ProfilePictureUrl ?? Model?.Author?.AvatarUrl))
+                    {
+                        <img src="@(Model?.Author?.ProfilePictureUrl ?? Model?.Author?.AvatarUrl)" class="rounded-circle shadow-sm" style="width: 46px; height: 46px; object-fit: cover;" alt="@(Model?.Author?.UserName ?? "Author")" />
+                    }
+                    else
+                    {
+                        <span class="avatar-initials-sm" style="width: 46px; height: 46px; font-size: 1.1rem;">
+                            @((Model?.Author?.UserName?.Length > 0 ? Model.Author.UserName[0].ToString().ToUpper() : "A"))
+                        </span>
+                    }
+                </a>
+                <div>
+                    <div class="fw-bold">
+                        <a asp-controller="Profile" asp-action="Public" asp-route-id="@Model?.AuthorId" class="text-dark text-decoration-none">
+                            @(Model?.Author?.UserName ?? "Anonymous Writer")
+                        </a>
+                    </div>
+                    <div class="text-muted smaller d-flex align-items-center gap-2" style="font-size: 0.85rem;">
+                        <span><i class="bi bi-calendar3 me-1"></i> @Model?.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")</span>
+                        <span>•</span>
+                        <span><i class="bi bi-clock me-1"></i> @readTimeMinutes min read</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Author / Admin Actions -->
             @{
-                var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
                 var canManage = User.Identity?.IsAuthenticated == true &&
-                    (User.IsInRole("Admin") || (User.IsInRole("Writer") && Model.AuthorId == currentUserId));
+                    (User.IsInRole("Admin") || (User.IsInRole("Writer") && Model?.AuthorId == currentUserId));
             }
             @if (canManage)
             {
-                <a class="btn btn-success me-2" asp-action="Edit" asp-route-id="@Model.Id"><i class="bi bi-pencil"></i> Edit</a>
-                <a class="btn btn-danger" asp-action="Delete" asp-route-id="@Model.Id"><i class="bi bi-trash"></i> Delete</a>
+                <div class="d-flex gap-2">
+                    <a class="btn btn-sm btn-outline-primary rounded-pill px-3" asp-action="Edit" asp-route-id="@Model?.Id">
+                        <i class="bi bi-pencil me-1"></i> Edit
+                    </a>
+                    <a class="btn btn-sm btn-outline-danger rounded-pill px-3" asp-action="Delete" asp-route-id="@Model?.Id">
+                        <i class="bi bi-trash me-1"></i> Delete
+                    </a>
+                </div>
+            }
+        </div>
+    </header>
+
+    <!-- Featured Image -->
+    @if (!string.IsNullOrEmpty(Model?.FeaturedImageUrl))
+    {
+        <div class="mb-4 rounded-4 overflow-hidden shadow-sm">
+            <img src="@Model.FeaturedImageUrl" class="img-fluid w-100" style="max-height: 480px; object-fit: cover;" alt="@Model.Title" />
+        </div>
+    }
+
+    <!-- Post Article Content -->
+    <div class="post-content fs-5 lh-lg mb-5 text-dark" style="word-break: break-word;">
+        @Html.Raw(Model?.Content)
+    </div>
+
+    <!-- Tags Section (Visible on Post) -->
+    <div class="post-tags-container p-3 bg-light rounded-3 border mb-4">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="fw-semibold text-secondary small d-flex align-items-center">
+                <i class="bi bi-tags-fill me-1 text-primary"></i> Tags:
+            </span>
+            @if (Model?.PostTags != null && Model.PostTags.Any())
+            {
+                foreach (var pt in Model.PostTags)
+                {
+                    if (pt.Tag != null)
+                    {
+                        <a asp-action="Index" asp-route-tag="@pt.Tag.Name" class="tag-pill">
+                            #@pt.Tag.Name
+                        </a>
+                    }
+                }
+            }
+            else
+            {
+                <span class="text-muted small">No tags attached to this post.</span>
             }
         </div>
     </div>
+
+    <!-- Like & Interaction Bar -->
+    <div class="d-flex align-items-center justify-content-between p-3 bg-white rounded-3 border shadow-sm mb-5" id="likes-section">
+        <div class="d-flex align-items-center gap-3">
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <form asp-controller="Likes" asp-action="Toggle" method="post" id="likeForm" class="d-inline">
+                    <input type="hidden" name="postId" value="@Model?.Id" />
+                    <button type="submit" class="btn btn-outline-danger rounded-pill px-3 @(isLiked ? "active" : "")" id="likeButton">
+                        <i class="bi @(isLiked ? "bi-heart-fill" : "bi-heart") me-1"></i>
+                        <span id="likeButtonText">@(isLiked ? "Liked" : "Like")</span>
+                        <span class="badge bg-danger ms-1" id="likeCountBadge">@likeCount</span>
+                    </button>
+                </form>
+            }
+            else
+            {
+                <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-outline-danger rounded-pill px-3">
+                    <i class="bi bi-heart me-1"></i> Like
+                    <span class="badge bg-danger ms-1">@likeCount</span>
+                </a>
+            }
+
+            <a href="#comments-section" class="btn btn-outline-secondary rounded-pill px-3 text-decoration-none">
+                <i class="bi bi-chat-left-text me-1"></i> Comments
+                <span class="badge bg-secondary ms-1">@totalComments</span>
+            </a>
+        </div>
+
+        <div>
+            <button type="button" class="btn btn-light rounded-pill px-3" onclick="copyPostLink()" title="Share Post">
+                <i class="bi bi-share me-1"></i> <span id="shareBtnText">Share</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Author Profile Card -->
+    @if (Model?.Author != null)
+    {
+        <div class="card shadow-sm border-0 rounded-3 mb-5 bg-white">
+            <div class="card-body p-4">
+                <div class="d-flex flex-column flex-sm-row align-items-center gap-3 text-center text-sm-start">
+                    <a asp-controller="Profile" asp-action="Public" asp-route-id="@Model.Author.Id">
+                        @if (!string.IsNullOrEmpty(Model.Author.ProfilePictureUrl ?? Model.Author.AvatarUrl))
+                        {
+                            <img src="@(Model.Author.ProfilePictureUrl ?? Model.Author.AvatarUrl)" class="rounded-circle shadow-sm" style="width: 72px; height: 72px; object-fit: cover;" alt="@Model.Author.UserName" />
+                        }
+                        else
+                        {
+                            <span class="avatar-initials-sm" style="width: 72px; height: 72px; font-size: 1.6rem;">
+                                @((Model.Author.UserName?.Length > 0 ? Model.Author.UserName[0].ToString().ToUpper() : "A"))
+                            </span>
+                        }
+                    </a>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center justify-content-center justify-content-sm-between mb-1">
+                            <h5 class="fw-bold mb-0">
+                                <a asp-controller="Profile" asp-action="Public" asp-route-id="@Model.Author.Id" class="text-dark text-decoration-none">
+                                    Written by @Model.Author.UserName
+                                </a>
+                            </h5>
+                        </div>
+                        <p class="text-muted small mb-2">
+                            @(string.IsNullOrWhiteSpace(Model.Author.Bio) ? "Author on BlogPlatform." : Model.Author.Bio)
+                        </p>
+                        <div class="d-flex gap-2 justify-content-center justify-content-sm-start">
+                            @if (!string.IsNullOrEmpty(Model.Author.TwitterUrl))
+                            {
+                                <a href="@Model.Author.TwitterUrl" target="_blank" class="text-muted me-2"><i class="bi bi-twitter-x"></i></a>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.Author.LinkedInUrl))
+                            {
+                                <a href="@Model.Author.LinkedInUrl" target="_blank" class="text-primary me-2"><i class="bi bi-linkedin"></i></a>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.Author.GitHubUrl))
+                            {
+                                <a href="@Model.Author.GitHubUrl" target="_blank" class="text-dark me-2"><i class="bi bi-github"></i></a>
+                            }
+                            <a asp-controller="Profile" asp-action="Public" asp-route-id="@Model.Author.Id" class="text-decoration-none small text-primary ms-auto">
+                                View full profile <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Comments and Threaded Replies Section -->
+    <section class="comments-container shadow-sm mb-5" id="comments-section">
+        <h3 class="h4 fw-bold mb-4 d-flex align-items-center gap-2">
+            <i class="bi bi-chat-quote-fill text-primary"></i> Discussion
+            <span class="badge bg-primary-subtle text-primary rounded-pill fs-6">@totalComments</span>
+        </h3>
+
+        <!-- Post a New Comment Box -->
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <div class="card border-0 shadow-sm rounded-3 mb-4 bg-light">
+                <div class="card-body p-3">
+                    <form asp-controller="Comments" asp-action="Create" method="post">
+                        <input type="hidden" name="postId" value="@Model?.Id" />
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small text-muted">Leave a comment</label>
+                            <textarea name="content" class="form-control" rows="3" placeholder="What are your thoughts? Be respectful and constructive..." required></textarea>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button class="btn btn-primary-modern btn-sm px-4" type="submit">
+                                <i class="bi bi-send me-1"></i> Post Comment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-light border text-center py-3 mb-4 rounded-3">
+                <i class="bi bi-lock me-1 text-muted"></i>
+                Please <a asp-area="Identity" asp-page="/Account/Login" class="fw-semibold">Log in</a> or
+                <a asp-area="Identity" asp-page="/Account/Register" class="fw-semibold">Sign up</a> to participate in the conversation.
+            </div>
+        }
+
+        <!-- Comments List -->
+        @if (topLevelComments.Any())
+        {
+            <div class="comments-list">
+                @foreach (var comment in topLevelComments)
+                {
+                    <div class="comment-card shadow-sm" id="comment-@comment.Id">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="avatar-initials-sm" style="width: 32px; height: 32px; font-size: 0.85rem;">
+                                    @((comment.Author?.UserName?.Length > 0 ? comment.Author.UserName[0].ToString().ToUpper() : "U"))
+                                </span>
+                                <div>
+                                    <span class="fw-bold small">@(comment.Author?.UserName ?? "Anonymous")</span>
+                                    <span class="text-muted smaller ms-1" style="font-size: 0.78rem;">
+                                        @comment.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy h:mm tt")
+                                    </span>
+                                </div>
+                            </div>
+
+                            @if (User.Identity?.IsAuthenticated == true)
+                            {
+                                <button type="button" class="btn btn-sm btn-link text-primary text-decoration-none p-0 fw-semibold" onclick="toggleReplyBox(@comment.Id)">
+                                    <i class="bi bi-reply-fill"></i> Reply
+                                </button>
+                            }
+                        </div>
+
+                        <!-- Comment Body -->
+                        <div class="text-dark small mb-2" style="white-space: pre-wrap;">@comment.Content</div>
+
+                        <!-- In-place Reply Box (Hidden by default) -->
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <div class="reply-form-box d-none" id="reply-box-@comment.Id">
+                                <form asp-controller="Comments" asp-action="Create" method="post">
+                                    <input type="hidden" name="postId" value="@Model?.Id" />
+                                    <input type="hidden" name="parentCommentId" value="@comment.Id" />
+                                    <div class="mb-2">
+                                        <textarea name="content" class="form-control form-control-sm" rows="2" placeholder="Write a reply to @(comment.Author?.UserName)..." required></textarea>
+                                    </div>
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleReplyBox(@comment.Id)">Cancel</button>
+                                        <button type="submit" class="btn btn-sm btn-primary-modern">Post Reply</button>
+                                    </div>
+                                </form>
+                            </div>
+                        }
+
+                        <!-- Nested Replies -->
+                        @if (comment.Replies != null && comment.Replies.Any())
+                        {
+                            <div class="comment-replies-list">
+                                @foreach (var reply in comment.Replies.OrderBy(r => r.CreatedAt))
+                                {
+                                    <div class="reply-card shadow-sm" id="comment-@reply.Id">
+                                        <div class="d-flex justify-content-between align-items-start mb-1">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="avatar-initials-sm" style="width: 26px; height: 26px; font-size: 0.75rem;">
+                                                    @((reply.Author?.UserName?.Length > 0 ? reply.Author.UserName[0].ToString().ToUpper() : "U"))
+                                                </span>
+                                                <div>
+                                                    <span class="fw-bold smaller" style="font-size: 0.85rem;">@(reply.Author?.UserName ?? "Anonymous")</span>
+                                                    <span class="text-muted smaller ms-1" style="font-size: 0.75rem;">
+                                                        @reply.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy h:mm tt")
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            @if (User.Identity?.IsAuthenticated == true)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-link text-primary text-decoration-none p-0 fw-semibold smaller" onclick="toggleReplyBox(@reply.Id)">
+                                                    <i class="bi bi-reply-fill"></i> Reply
+                                                </button>
+                                            }
+                                        </div>
+
+                                        <div class="text-dark smaller mb-2" style="font-size: 0.9rem; white-space: pre-wrap;">@reply.Content</div>
+
+                                        <!-- Reply form for replying to a reply -->
+                                        @if (User.Identity?.IsAuthenticated == true)
+                                        {
+                                            <div class="reply-form-box d-none" id="reply-box-@reply.Id">
+                                                <form asp-controller="Comments" asp-action="Create" method="post">
+                                                    <input type="hidden" name="postId" value="@Model?.Id" />
+                                                    <input type="hidden" name="parentCommentId" value="@comment.Id" />
+                                                    <div class="mb-2">
+                                                        <textarea name="content" class="form-control form-control-sm" rows="2" placeholder="Reply to @(reply.Author?.UserName)..." required></textarea>
+                                                    </div>
+                                                    <div class="d-flex justify-content-end gap-2">
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleReplyBox(@reply.Id)">Cancel</button>
+                                                        <button type="submit" class="btn btn-sm btn-primary-modern">Post Reply</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-chat-square-dots fs-2 d-block mb-2 text-secondary"></i>
+                <p class="mb-0">No comments yet. Start the conversation!</p>
+            </div>
+        }
+    </section>
 </article>
+
+@section Scripts {
+    <script>
+        function toggleReplyBox(id) {
+            var box = document.getElementById('reply-box-' + id);
+            if (box) {
+                box.classList.toggle('d-none');
+                if (!box.classList.contains('d-none')) {
+                    var textarea = box.querySelector('textarea');
+                    if (textarea) textarea.focus();
+                }
+            }
+        }
+
+        function copyPostLink() {
+            navigator.clipboard.writeText(window.location.href).then(function() {
+                var btn = document.getElementById('shareBtnText');
+                var orig = btn.innerText;
+                btn.innerText = 'Copied!';
+                setTimeout(function() { btn.innerText = orig; }, 2000);
+            });
+        }
+    </script>
+}

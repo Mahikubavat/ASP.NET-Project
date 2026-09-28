@@ -1,60 +1,221 @@
-@model BlogPlatform.Models.Post
+@model BlogPlatform.ViewModels.PostCreateEditViewModel
 
 @{
-    ViewData["Title"] = "Edit Post";
+    ViewData["Title"] = "Edit Post - " + (Model?.Title ?? "");
+    var defaultTags = ViewBag.Tags as IEnumerable<BlogPlatform.Models.Tag> ?? Enumerable.Empty<BlogPlatform.Models.Tag>();
+    var selectedIds = Model?.SelectedTagIds ?? new List<int>();
 }
 
-<div class="card shadow-sm">
-    <div class="card-body">
-        <h2 class="card-title mb-4">Edit Post</h2>
-
-        <form asp-action="Edit" method="post">
-            <input type="hidden" asp-for="Id" />
-            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-
-            <div class="mb-3">
-                <label asp-for="Title" class="form-label">Title</label>
-                <input asp-for="Title" class="form-control" />
-                <span asp-validation-for="Title" class="text-danger"></span>
-            </div>
-
-            <div class="mb-3">
-                <label asp-for="Content" class="form-label">Content</label>
-                <textarea asp-for="Content" class="form-control" rows="12"></textarea>
-                <span asp-validation-for="Content" class="text-danger"></span>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label asp-for="FeaturedImageUrl" class="form-label">Featured Image URL</label>
-                    <input asp-for="FeaturedImageUrl" class="form-control" />
-                    <span asp-validation-for="FeaturedImageUrl" class="text-danger"></span>
-                </div>
-                <div class="col-md-3 mb-3">
-                    <label asp-for="CategoryId" class="form-label">Category</label>
-                    <select asp-for="CategoryId" asp-items="ViewBag.Categories as SelectList" class="form-select">
-                        <option value="">-- None --</option>
-                    </select>
-                    <span asp-validation-for="CategoryId" class="text-danger"></span>
-                </div>
-                <div class="col-md-3 mb-3">
-                    <label asp-for="Status" class="form-label">Status</label>
-                    <select asp-for="Status" class="form-select">
-                        <option value="0" selected="@(Model.Status == BlogPlatform.Models.PostStatus.Draft)">Draft</option>
-                        <option value="1" selected="@(Model.Status == BlogPlatform.Models.PostStatus.Published)">Published</option>
-                    </select>
-                    <span asp-validation-for="Status" class="text-danger"></span>
-                </div>
-            </div>
-
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-success"><i class="bi bi-save"></i> Save Changes</button>
-                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
-            </div>
-        </form>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 fw-bold mb-1 d-flex align-items-center gap-2">
+            <i class="bi bi-pencil text-primary"></i> Edit Post
+        </h1>
+        <p class="text-muted small mb-0">Update your article content, tags, or publication settings.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-eye me-1"></i> View Post
+        </a>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Posts
+        </a>
     </div>
 </div>
 
+<form asp-action="Edit" method="post" enctype="multipart/form-data" id="editPostForm">
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" asp-for="ExistingFeaturedImageUrl" />
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm"></div>
+
+    <div class="row g-4">
+        <!-- Main Content Area -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0 rounded-3 mb-4">
+                <div class="card-body p-4">
+                    <div class="mb-4">
+                        <label asp-for="Title" class="form-label fw-bold">Post Title <span class="text-danger">*</span></label>
+                        <input asp-for="Title" class="form-control form-control-lg" placeholder="Enter an engaging title..." />
+                        <span asp-validation-for="Title" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="Slug" class="form-label fw-medium text-muted small">URL Slug</label>
+                        <input asp-for="Slug" class="form-control form-control-sm" placeholder="custom-url-slug" />
+                        <span asp-validation-for="Slug" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="Content" class="form-label fw-bold">Content <span class="text-danger">*</span></label>
+                        <textarea asp-for="Content" class="form-control font-monospace" rows="14" placeholder="Write your post content here... HTML is supported for rich formatting."></textarea>
+                        <span asp-validation-for="Content" class="text-danger small"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tags Section -->
+            <div class="card shadow-sm border-0 rounded-3 mb-4">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h5 class="card-title mb-0 fw-bold d-flex align-items-center gap-2">
+                        <i class="bi bi-tags-fill text-primary"></i> Tags
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold d-flex justify-content-between align-items-center mb-2">
+                            <span>Default Topics & Tags</span>
+                            <span class="text-muted smaller" style="font-size:0.8rem;">Click to select or deselect</span>
+                        </label>
+                        <div class="d-flex flex-wrap gap-2 p-3 bg-light rounded-3 border" id="tagsContainer">
+                            @if (defaultTags.Any())
+                            {
+                                foreach (var tag in defaultTags)
+                                {
+                                    bool isSel = selectedIds.Contains(tag.Id);
+                                    <span class="tag-pill tag-interactive-chip @(isSel ? "selected" : "")"
+                                          data-tag-id="@tag.Id"
+                                          onclick="toggleTagChip(this, @tag.Id)">
+                                        <i class="bi @(isSel ? "bi-check-circle-fill text-white" : "bi-plus-circle text-muted") me-1"></i>
+                                        @tag.Name
+                                    </span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted small">No tags defined yet. You can add custom tags below!</span>
+                            }
+                        </div>
+
+                        <!-- Hidden multi-select bound to SelectedTagIds -->
+                        <select asp-for="SelectedTagIds" id="hiddenSelectedTagIds" multiple class="d-none">
+                            @foreach (var tag in defaultTags)
+                            {
+                                if (selectedIds.Contains(tag.Id))
+                                {
+                                    <option value="@tag.Id" selected="selected">@tag.Name</option>
+                                }
+                                else
+                                {
+                                    <option value="@tag.Id">@tag.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-0">
+                        <label asp-for="TagsCommaSeparated" class="form-label fw-semibold">
+                            Additional Custom Tags (comma separated)
+                        </label>
+                        <input asp-for="TagsCommaSeparated" class="form-control" placeholder="e.g. dotnet, clean-code, aspnetcore" />
+                        <div class="form-text small">Add any custom tags not in the default list above, separated by commas.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar / Publishing Settings -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 rounded-3 mb-4 sticky-top" style="top: 80px;">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h5 class="card-title mb-0 fw-bold d-flex align-items-center gap-2">
+                        <i class="bi bi-sliders2 text-primary"></i> Publishing Details
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Category Dropdown -->
+                    <div class="mb-4">
+                        <label asp-for="CategoryId" class="form-label fw-bold">
+                            <i class="bi bi-folder2-open text-primary me-1"></i> Category
+                        </label>
+                        <select asp-for="CategoryId" asp-items="ViewBag.Categories" class="form-select">
+                            <option value="">-- Select Category --</option>
+                        </select>
+                        <span asp-validation-for="CategoryId" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Status Selector -->
+                    <div class="mb-4">
+                        <label asp-for="IsPublished" class="form-label fw-bold">
+                            <i class="bi bi-send text-primary me-1"></i> Publication Status
+                        </label>
+                        <select asp-for="IsPublished" class="form-select">
+                            <option value="true">Published</option>
+                            <option value="false">Draft</option>
+                        </select>
+                        <span asp-validation-for="IsPublished" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Featured Image -->
+                    <div class="mb-4">
+                        <label asp-for="FeaturedImage" class="form-label fw-bold">
+                            <i class="bi bi-image text-primary me-1"></i> Cover Image
+                        </label>
+                        @if (!string.IsNullOrEmpty(Model.ExistingFeaturedImageUrl))
+                        {
+                            <div class="mb-2">
+                                <img src="@Model.ExistingFeaturedImageUrl" class="img-fluid rounded border shadow-sm" style="max-height: 140px; width: 100%; object-fit: cover;" alt="Current Cover" />
+                                <div class="text-muted smaller mt-1">Current cover image</div>
+                            </div>
+                        }
+                        <input asp-for="FeaturedImage" type="file" class="form-control" id="featuredImageInput" accept="image/*" />
+                        <span asp-validation-for="FeaturedImage" class="text-danger small"></span>
+                        <div id="imagePreviewContainer" class="mt-2 d-none">
+                            <img id="imagePreview" src="#" alt="New Preview" class="img-fluid rounded border shadow-sm" style="max-height: 140px; width: 100%; object-fit: cover;" />
+                            <div class="text-success smaller mt-1">New image selected</div>
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary-modern py-2">
+                            <i class="bi bi-save me-1"></i> Save Changes
+                        </button>
+                        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        function toggleTagChip(chip, tagId) {
+            chip.classList.toggle('selected');
+            var isSel = chip.classList.contains('selected');
+            var icon = chip.querySelector('i');
+            if (isSel) {
+                icon.className = 'bi bi-check-circle-fill text-white me-1';
+            } else {
+                icon.className = 'bi bi-plus-circle text-muted me-1';
+            }
+
+            var select = document.getElementById('hiddenSelectedTagIds');
+            for (var i = 0; i < select.options.length; i++) {
+                if (select.options[i].value == tagId) {
+                    select.options[i].selected = isSel;
+                    break;
+                }
+            }
+        }
+
+        // Image Preview
+        document.getElementById('featuredImageInput').addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(evt) {
+                    document.getElementById('imagePreview').src = evt.target.result;
+                    document.getElementById('imagePreviewContainer').classList.remove('d-none');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                document.getElementById('imagePreviewContainer').classList.add('d-none');
+            }
+        });
+    </script>
 }

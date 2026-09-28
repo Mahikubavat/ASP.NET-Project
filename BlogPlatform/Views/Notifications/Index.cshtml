@@ -1,0 +1,145 @@
+@model IEnumerable<BlogPlatform.Models.Notification>
+
+@{
+    ViewData["Title"] = "Notifications";
+    bool unreadOnly = ViewBag.UnreadOnly ?? false;
+    bool notifyOnLike = ViewBag.NotifyOnLike ?? true;
+    bool notifyOnComment = ViewBag.NotifyOnComment ?? true;
+}
+
+<div class="row g-4">
+    <!-- Main Notifications Area -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header bg-white border-bottom py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <h1 class="h4 mb-0 fw-bold d-flex align-items-center gap-2">
+                        <i class="bi bi-bell-fill text-primary"></i> Notifications
+                    </h1>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a asp-action="Index" asp-route-unreadOnly="false" class="btn @(!unreadOnly ? "btn-primary" : "btn-outline-secondary")">All</a>
+                        <a asp-action="Index" asp-route-unreadOnly="true" class="btn @(unreadOnly ? "btn-primary" : "btn-outline-secondary")">Unread</a>
+                    </div>
+                    @if (Model != null && Model.Any(n => !n.IsRead))
+                    {
+                        <form asp-action="MarkAllAsRead" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-check2-all me-1"></i> Mark all read
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+
+            <div class="card-body p-0">
+                @if (Model == null || !Model.Any())
+                {
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-bell-slash fs-1 d-block mb-3 text-secondary"></i>
+                        <h5>No notifications @(unreadOnly ? "unread" : "yet")</h5>
+                        <p class="small text-muted">When people like your posts or reply to your comments, you'll see them here.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="list-group list-group-flush">
+                        @foreach (var notification in Model)
+                        {
+                            <div class="list-group-item list-group-item-action d-flex align-items-start justify-content-between p-3 @(!notification.IsRead ? "bg-light bg-opacity-50" : "")">
+                                <div class="d-flex gap-3 align-items-start">
+                                    <div class="notification-icon-wrapper @(notification.Type.ToLower())">
+                                        @if (notification.Type == "Like")
+                                        {
+                                            <i class="bi bi-heart-fill"></i>
+                                        }
+                                        else if (notification.Type == "Reply")
+                                        {
+                                            <i class="bi bi-reply-fill"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-chat-dots-fill"></i>
+                                        }
+                                    </div>
+                                    <div>
+                                        <div>
+                                            @if (!string.IsNullOrEmpty(notification.Url))
+                                            {
+                                                <a href="@notification.Url" class="text-decoration-none fw-medium text-dark">
+                                                    @notification.Message
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-dark">@notification.Message</span>
+                                            }
+                                        </div>
+                                        <div class="text-muted smaller mt-1 d-flex align-items-center gap-2" style="font-size:0.8rem;">
+                                            <span><i class="bi bi-clock me-1"></i>@notification.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy h:mm tt")</span>
+                                            @if (!notification.IsRead)
+                                            {
+                                                <span class="badge bg-primary-subtle text-primary rounded-pill">New</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @if (!notification.IsRead)
+                                {
+                                    <form asp-action="MarkAsRead" method="post" class="ms-2">
+                                        <input type="hidden" name="id" value="@notification.Id" />
+                                        <button type="submit" class="btn btn-sm btn-link text-muted p-0 text-decoration-none" title="Mark as read">
+                                            <i class="bi bi-check2"></i>
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Preferences Sidebar -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header bg-white border-bottom py-3">
+                <h5 class="card-title mb-0 fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-sliders text-primary"></i> Notification Settings
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">Choose which events trigger notifications for your account.</p>
+
+                <form asp-action="ToggleSettings" method="post">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="notifyOnLike" id="switchNotifyOnLike" value="true" @(notifyOnLike ? "checked" : "") />
+                        <label class="form-check-label fw-semibold" for="switchNotifyOnLike">
+                            Likes on your posts
+                        </label>
+                        <div class="text-muted smaller" style="font-size:0.8rem;">
+                            Receive notifications when readers like your articles.
+                        </div>
+                    </div>
+
+                    <div class="form-check form-switch mb-4">
+                        <input class="form-check-input" type="checkbox" name="notifyOnComment" id="switchNotifyOnComment" value="true" @(notifyOnComment ? "checked" : "") />
+                        <label class="form-check-label fw-semibold" for="switchNotifyOnComment">
+                            Comments & Replies
+                        </label>
+                        <div class="text-muted smaller" style="font-size:0.8rem;">
+                            Receive notifications when someone comments on your post or replies to your comment.
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary-modern btn-sm w-100">
+                        <i class="bi bi-save me-1"></i> Save Preferences
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
