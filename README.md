@@ -100,10 +100,3 @@ BlogPlatform/
 ```
 
 
-## Production notes
-
-
-- Replace the LocalDB connection string with a securely managed production SQL Server connection string.
-- Review the development admin-account seeding in `Data/DbIntializer.cs`. Change or remove its default credentials before deploying, and do not rely on the development seed account for production administration.
-- Configure HTTPS, persistent and protected Data Protection keys, and durable storage for uploaded files in the deployment environment.
-- The application currently uses `EnsureCreated` at startup. If schema migrations are introduced, use and apply EF Core migrations as part of the deployment process.
