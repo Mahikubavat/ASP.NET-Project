@@ -74,12 +74,16 @@ else
     <div class="row g-4">
         @foreach (var post in Model)
         {
+            var postUrl = string.IsNullOrWhiteSpace(post.Slug)
+                ? Url.RouteUrl("PostDetailsById", new { id = post.Id })
+                : Url.RouteUrl("PostDetailsBySlug", new { slug = post.Slug });
+
             <div class="col-md-6 col-lg-4">
                 <div class="card h-100 modern-card shadow-sm d-flex flex-column">
                     @if (!string.IsNullOrEmpty(post.FeaturedImageUrl))
                     {
                         <div class="card-img-wrapper">
-                            <a asp-action="Details" asp-route-id="@post.Id">
+                            <a href="@postUrl">
                                 <img src="@post.FeaturedImageUrl" alt="@post.Title" />
                             </a>
                             @if (post.Category != null)
@@ -102,7 +106,7 @@ else
                         }
 
                         <h5 class="card-title fw-bold mb-2">
-                            <a asp-action="Details" asp-route-id="@post.Id" class="text-dark text-decoration-none">
+                            <a href="@postUrl" class="text-dark text-decoration-none">
                                 @post.Title
                             </a>
                         </h5>

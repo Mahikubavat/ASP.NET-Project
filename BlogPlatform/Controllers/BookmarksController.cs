@@ -41,9 +41,9 @@ public class BookmarksController : Controller
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return Challenge();
 
-        var postExists = await _db.Posts!
-            .AnyAsync(post => post.Id == postId && post.Status == PostStatus.Published);
-        if (!postExists) return NotFound();
+        var post = await _db.Posts!
+            .FirstOrDefaultAsync(post => post.Id == postId && post.Status == PostStatus.Published);
+        if (post == null) return NotFound();
 
         var bookmark = await _db.Bookmarks!
             .FirstOrDefaultAsync(item => item.PostId == postId && item.UserId == userId);
@@ -60,6 +60,8 @@ public class BookmarksController : Controller
         }
 
         await _db.SaveChangesAsync();
-        return RedirectToAction("Details", "Posts", new { id = postId });
+        return !string.IsNullOrWhiteSpace(post.Slug)
+            ? RedirectToRoute("PostDetailsBySlug", new { slug = post.Slug })
+            : RedirectToRoute("PostDetailsById", new { id = post.Id });
     }
 }

@@ -41,7 +41,7 @@
                         <button type="submit" class="btn btn-danger px-4 rounded-pill">
                             <i class="bi bi-trash me-1"></i> Yes, Delete Post
                         </button>
-                        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary rounded-pill px-3">
+                        <a href="@(string.IsNullOrWhiteSpace(Model.Slug) ? Url.RouteUrl("PostDetailsById", new { id = Model.Id }) : Url.RouteUrl("PostDetailsBySlug", new { slug = Model.Slug }))" class="btn btn-outline-secondary rounded-pill px-3">
                             Cancel
                         </a>
                     </div>

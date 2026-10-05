@@ -30,12 +30,15 @@ else
         {
             var post = bookmark.Post;
             if (post == null) { continue; }
+            var postUrl = string.IsNullOrWhiteSpace(post.Slug)
+                ? Url.RouteUrl("PostDetailsById", new { id = post.Id })
+                : Url.RouteUrl("PostDetailsBySlug", new { slug = post.Slug });
 
             <div class="col-md-6 col-lg-4">
                 <article class="card h-100 modern-card shadow-sm d-flex flex-column">
                     @if (!string.IsNullOrEmpty(post.FeaturedImageUrl))
                     {
-                        <a asp-controller="Posts" asp-action="Details" asp-route-id="@post.Id" class="card-img-wrapper">
+                        <a href="@postUrl" class="card-img-wrapper">
                             <img src="@post.FeaturedImageUrl" alt="@post.Title" />
                         </a>
                     }
@@ -45,11 +48,11 @@ else
                             <div class="mb-2"><span class="badge bg-primary-subtle text-primary">@post.Category.Name</span></div>
                         }
                         <h2 class="h5 card-title fw-bold mb-2">
-                            <a asp-controller="Posts" asp-action="Details" asp-route-id="@post.Id" class="text-dark text-decoration-none">@post.Title</a>
+                            <a href="@postUrl" class="text-dark text-decoration-none">@post.Title</a>
                         </h2>
                         <p class="text-muted small mb-3">By @(post.Author?.UserName ?? "Writer") · Saved @bookmark.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")</p>
                         <div class="mt-auto d-flex justify-content-between align-items-center pt-3 border-top">
-                            <a asp-controller="Posts" asp-action="Details" asp-route-id="@post.Id" class="btn btn-sm btn-outline-primary">Read post</a>
+                            <a href="@postUrl" class="btn btn-sm btn-outline-primary">Read post</a>
                             <form asp-controller="Bookmarks" asp-action="Toggle" method="post">
                                 <input type="hidden" name="postId" value="@post.Id" />
                                 <button type="submit" class="btn btn-sm btn-outline-secondary" title="Remove saved post" aria-label="Remove @post.Title from saved posts">

@@ -14,7 +14,7 @@
         <p class="text-muted small mb-0">Update your article content, tags, or publication settings.</p>
     </div>
     <div class="d-flex gap-2">
-        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-primary btn-sm">
+        <a href="@(string.IsNullOrWhiteSpace(Model.Slug) ? Url.RouteUrl("PostDetailsById", new { id = Model.Id }) : Url.RouteUrl("PostDetailsBySlug", new { slug = Model.Slug }))" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-eye me-1"></i> View Post
         </a>
         <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
@@ -174,7 +174,7 @@
                         <button type="submit" class="btn btn-primary-modern py-2">
                             <i class="bi bi-save me-1"></i> Save Changes
                         </button>
-                        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+                        <a href="@(string.IsNullOrWhiteSpace(Model.Slug) ? Url.RouteUrl("PostDetailsById", new { id = Model.Id }) : Url.RouteUrl("PostDetailsBySlug", new { slug = Model.Slug }))" class="btn btn-outline-secondary">
                             Cancel
                         </a>
                     </div>

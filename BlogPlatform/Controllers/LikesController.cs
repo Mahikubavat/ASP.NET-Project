@@ -48,7 +48,10 @@ public class LikesController : Controller
         if (isLikedNow && !string.IsNullOrEmpty(post.AuthorId) && post.AuthorId != userId)
         {
             var currentUserName = User.Identity?.Name ?? "Someone";
-            string postUrl = Url.Action("Details", "Posts", new { id = postId }) + "#likes-section";
+            var detailsUrl = !string.IsNullOrWhiteSpace(post.Slug)
+                ? Url.RouteUrl("PostDetailsBySlug", new { slug = post.Slug })
+                : Url.RouteUrl("PostDetailsById", new { id = post.Id });
+            string postUrl = (detailsUrl ?? throw new InvalidOperationException("Unable to generate the post URL.")) + "#likes-section";
             await _notificationService.CreateNotificationAsync(
                 post.AuthorId,
                 userId,
@@ -64,6 +67,8 @@ public class LikesController : Controller
             return Json(new { success = true, isLiked = isLikedNow, count = likeCount });
         }
 
-        return RedirectToAction("Details", "Posts", new { id = postId });
+        return !string.IsNullOrWhiteSpace(post.Slug)
+            ? RedirectToRoute("PostDetailsBySlug", new { slug = post.Slug })
+            : RedirectToRoute("PostDetailsById", new { id = post.Id });
     }
 }

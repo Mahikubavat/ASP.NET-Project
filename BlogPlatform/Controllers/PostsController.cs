@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 namespace BlogPlatform.Controllers;
 
@@ -92,16 +93,24 @@ public class PostsController : Controller
     }
 
     [AllowAnonymous]
-    public async Task<IActionResult> Details(int id)
+    [HttpGet("/post/{slug}", Name = "PostDetailsBySlug")]
+    [HttpGet("/posts/details/{id:int}", Name = "PostDetailsById")]
+    public async Task<IActionResult> Details(int? id, string? slug)
     {
-        var post = await _db.Posts!
+        var query = _db.Posts!
             .Include(p => p.Author)
             .Include(p => p.Category)
             .Include(p => p.PostTags)!.ThenInclude(pt => pt.Tag)
             .Include(p => p.Comments)!.ThenInclude(c => c.Author)
             .Include(p => p.Comments)!.ThenInclude(c => c.Replies)!.ThenInclude(r => r.Author)
-            .Include(p => p.Likes)
-            .FirstOrDefaultAsync(p => p.Id == id);
+            .Include(p => p.Likes);
+
+        var normalizedSlug = string.IsNullOrWhiteSpace(slug) ? null : slug.Trim().ToLowerInvariant();
+        var post = !string.IsNullOrWhiteSpace(normalizedSlug)
+            ? await query.FirstOrDefaultAsync(p => p.Slug == normalizedSlug)
+            : id.HasValue
+                ? await query.FirstOrDefaultAsync(p => p.Id == id.Value)
+                : null;
 
         if (post == null) return NotFound();
 
@@ -113,9 +122,13 @@ public class PostsController : Controller
             if (!canView) return NotFound();
         }
 
+        if (!string.IsNullOrWhiteSpace(post.Slug) &&
+            (id.HasValue || !string.Equals(post.Slug, slug, StringComparison.Ordinal)))
+            return RedirectToRoutePermanent("PostDetailsBySlug", new { slug = post.Slug });
+
         var currentUserId = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         ViewBag.IsBookmarked = !string.IsNullOrEmpty(currentUserId) && await _db.Bookmarks!
-            .AnyAsync(bookmark => bookmark.PostId == id && bookmark.UserId == currentUserId);
+            .AnyAsync(bookmark => bookmark.PostId == post.Id && bookmark.UserId == currentUserId);
 
         return View(post);
     }
@@ -141,7 +154,7 @@ public class PostsController : Controller
         var post = new Post
         {
             Title = model.Title,
-            Slug = string.IsNullOrWhiteSpace(model.Slug) ? model.Title.ToLowerInvariant().Replace(' ', '-') : model.Slug,
+            Slug = await GetUniqueSlugAsync(model.Slug, model.Title),
             Content = model.Content,
             CategoryId = model.CategoryId,
             Status = model.IsPublished ? PostStatus.Published : PostStatus.Draft,
@@ -226,7 +239,7 @@ public class PostsController : Controller
             return Forbid();
 
         post.Title = model.Title;
-        post.Slug = string.IsNullOrWhiteSpace(model.Slug) ? model.Title.ToLowerInvariant().Replace(' ', '-') : model.Slug;
+        post.Slug = await GetUniqueSlugAsync(model.Slug, model.Title, post.Id);
         post.Content = model.Content;
         post.CategoryId = model.CategoryId;
         post.Status = model.IsPublished ? PostStatus.Published : PostStatus.Draft;
@@ -304,6 +317,27 @@ public class PostsController : Controller
 
         var tags = await GetTagSuggestionsAsync(selectedCategoryId, selectedTagIds);
         ViewBag.Tags = tags;
+    }
+
+    private async Task<string> GetUniqueSlugAsync(string? requestedSlug, string title, int? excludedPostId = null)
+    {
+        var source = string.IsNullOrWhiteSpace(requestedSlug) ? title : requestedSlug;
+        var baseSlug = Regex.Replace(source.Trim().ToLowerInvariant(), @"[^\p{L}\p{N}]+", "-").Trim('-');
+        if (string.IsNullOrWhiteSpace(baseSlug))
+            baseSlug = "post";
+
+        baseSlug = baseSlug[..Math.Min(baseSlug.Length, 200)].TrimEnd('-');
+        var candidate = baseSlug;
+        var suffix = 2;
+
+        while (await _db.Posts!.AnyAsync(post =>
+            post.Slug == candidate && (!excludedPostId.HasValue || post.Id != excludedPostId.Value)))
+        {
+            var suffixText = $"-{suffix++}";
+            candidate = baseSlug[..Math.Min(baseSlug.Length, 200 - suffixText.Length)].TrimEnd('-') + suffixText;
+        }
+
+        return candidate;
     }
 
     private async Task<List<Tag>> GetTagSuggestionsAsync(int? categoryId, IEnumerable<int>? selectedTagIds)

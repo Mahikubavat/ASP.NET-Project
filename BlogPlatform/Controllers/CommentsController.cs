@@ -26,7 +26,7 @@ public class CommentsController : Controller
     {
         if (string.IsNullOrWhiteSpace(content))
         {
-            return RedirectToAction("Details", "Posts", new { id = postId });
+            return RedirectToRoute("PostDetailsById", new { id = postId });
         }
 
         var post = await _db.Posts!.Include(p => p.Author).FirstOrDefaultAsync(p => p.Id == postId);
@@ -64,7 +64,10 @@ public class CommentsController : Controller
         await _db.SaveChangesAsync();
 
         // Send notifications based on preferences
-        string postUrl = Url.Action("Details", "Posts", new { id = postId }) + $"#comment-{comment.Id}";
+        var detailsUrl = !string.IsNullOrWhiteSpace(post.Slug)
+            ? Url.RouteUrl("PostDetailsBySlug", new { slug = post.Slug })
+            : Url.RouteUrl("PostDetailsById", new { id = post.Id });
+        var postUrl = (detailsUrl ?? throw new InvalidOperationException("Unable to generate the post URL.")) + $"#comment-{comment.Id}";
 
         if (parentComment != null)
         {
@@ -97,6 +100,6 @@ public class CommentsController : Controller
             }
         }
 
-        return RedirectToAction("Details", "Posts", new { id = postId, fragment = $"comment-{comment.Id}" });
+        return Redirect(postUrl);
     }
 }
