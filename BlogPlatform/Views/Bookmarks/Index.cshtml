@@ -1,0 +1,65 @@
+@model IEnumerable<BlogPlatform.Models.Bookmark>
+
+@{
+    ViewData["Title"] = "Saved Posts";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h1 class="h3 fw-bold mb-1"><i class="bi bi-bookmark-heart text-warning me-2"></i>Saved Posts</h1>
+        <p class="text-muted small mb-0">Articles you've bookmarked for later.</p>
+    </div>
+    <a asp-controller="Posts" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-grid me-1"></i> Explore Posts
+    </a>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="card border-0 shadow-sm p-5 text-center my-4">
+        <i class="bi bi-bookmark text-secondary display-4 mb-3"></i>
+        <h2 class="h5 fw-bold">No saved posts yet</h2>
+        <p class="text-muted mb-4">Save an article while reading and it will appear here.</p>
+        <a asp-controller="Posts" asp-action="Index" class="btn btn-primary-modern px-4">Browse articles</a>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        @foreach (var bookmark in Model)
+        {
+            var post = bookmark.Post;
+            if (post == null) { continue; }
+
+            <div class="col-md-6 col-lg-4">
+                <article class="card h-100 modern-card shadow-sm d-flex flex-column">
+                    @if (!string.IsNullOrEmpty(post.FeaturedImageUrl))
+                    {
+                        <a asp-controller="Posts" asp-action="Details" asp-route-id="@post.Id" class="card-img-wrapper">
+                            <img src="@post.FeaturedImageUrl" alt="@post.Title" />
+                        </a>
+                    }
+                    <div class="card-body d-flex flex-column p-4">
+                        @if (post.Category != null)
+                        {
+                            <div class="mb-2"><span class="badge bg-primary-subtle text-primary">@post.Category.Name</span></div>
+                        }
+                        <h2 class="h5 card-title fw-bold mb-2">
+                            <a asp-controller="Posts" asp-action="Details" asp-route-id="@post.Id" class="text-dark text-decoration-none">@post.Title</a>
+                        </h2>
+                        <p class="text-muted small mb-3">By @(post.Author?.UserName ?? "Writer") · Saved @bookmark.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")</p>
+                        <div class="mt-auto d-flex justify-content-between align-items-center pt-3 border-top">
+                            <a asp-controller="Posts" asp-action="Details" asp-route-id="@post.Id" class="btn btn-sm btn-outline-primary">Read post</a>
+                            <form asp-controller="Bookmarks" asp-action="Toggle" method="post">
+                                <input type="hidden" name="postId" value="@post.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Remove saved post" aria-label="Remove @post.Title from saved posts">
+                                    <i class="bi bi-bookmark-x"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        }
+    </div>
+}

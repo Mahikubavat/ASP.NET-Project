@@ -113,6 +113,10 @@ public class PostsController : Controller
             if (!canView) return NotFound();
         }
 
+        var currentUserId = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        ViewBag.IsBookmarked = !string.IsNullOrEmpty(currentUserId) && await _db.Bookmarks!
+            .AnyAsync(bookmark => bookmark.PostId == id && bookmark.UserId == currentUserId);
+
         return View(post);
     }
 
@@ -130,7 +134,7 @@ public class PostsController : Controller
     {
         if (!ModelState.IsValid)
         {
-            await PopulateViewBagsAsync(model.CategoryId);
+            await PopulateViewBagsAsync(model.CategoryId, model.SelectedTagIds);
             return View(model);
         }
 
@@ -187,8 +191,15 @@ public class PostsController : Controller
             SelectedTagIds = post.PostTags?.Select(pt => pt.TagId).ToList() ?? new List<int>()
         };
 
-        await PopulateViewBagsAsync(post.CategoryId);
+        await PopulateViewBagsAsync(post.CategoryId, vm.SelectedTagIds);
         return View(vm);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> TagSuggestions(int? categoryId, [FromQuery] int[]? selectedTagIds)
+    {
+        var tags = await GetTagSuggestionsAsync(categoryId, selectedTagIds);
+        return Json(tags.Select(tag => new { id = tag.Id, name = tag.Name }));
     }
 
     [HttpPost]
@@ -200,7 +211,7 @@ public class PostsController : Controller
 
         if (!ModelState.IsValid)
         {
-            await PopulateViewBagsAsync(model.CategoryId);
+            await PopulateViewBagsAsync(model.CategoryId, model.SelectedTagIds);
             return View(model);
         }
 
@@ -285,14 +296,75 @@ public class PostsController : Controller
         return RedirectToAction(nameof(Manage));
     }
 
-    private async Task PopulateViewBagsAsync(int? selectedCategoryId = null)
+    private async Task PopulateViewBagsAsync(int? selectedCategoryId = null, IEnumerable<int>? selectedTagIds = null)
     {
         var categories = await _db.Categories!.OrderBy(c => c.Name).ToListAsync();
         ViewBag.Categories = new SelectList(categories, "Id", "Name", selectedCategoryId);
         ViewBag.CategoryList = categories;
 
-        var tags = await _db.Tags!.OrderBy(t => t.Name).ToListAsync();
+        var tags = await GetTagSuggestionsAsync(selectedCategoryId, selectedTagIds);
         ViewBag.Tags = tags;
+    }
+
+    private async Task<List<Tag>> GetTagSuggestionsAsync(int? categoryId, IEnumerable<int>? selectedTagIds)
+    {
+        const int suggestionLimit = 10;
+
+        var rankedTagIds = await GetRankedTagIdsAsync(categoryId, suggestionLimit);
+        if (categoryId.HasValue && rankedTagIds.Count < suggestionLimit)
+        {
+            var popularTagIds = await GetRankedTagIdsAsync(null, suggestionLimit);
+            rankedTagIds.AddRange(popularTagIds.Where(tagId => !rankedTagIds.Contains(tagId)));
+            rankedTagIds = rankedTagIds.Take(suggestionLimit).ToList();
+        }
+
+        if (rankedTagIds.Count == 0)
+        {
+            rankedTagIds = await _db.Tags!
+                .OrderBy(tag => tag.Name)
+                .Select(tag => tag.Id)
+                .Take(suggestionLimit)
+                .ToListAsync();
+        }
+
+        var selectedIds = selectedTagIds?.Where(id => id > 0).Distinct().ToList() ?? new List<int>();
+        var tagIds = rankedTagIds.Concat(selectedIds).Distinct().ToList();
+        var tagsById = await _db.Tags!
+            .Where(tag => tagIds.Contains(tag.Id))
+            .ToDictionaryAsync(tag => tag.Id);
+
+        var result = rankedTagIds
+            .Where(tagsById.ContainsKey)
+            .Select(id => tagsById[id])
+            .ToList();
+
+        result.AddRange(selectedIds
+            .Where(id => tagsById.ContainsKey(id) && !rankedTagIds.Contains(id))
+            .Select(id => tagsById[id])
+            .OrderBy(tag => tag.Name));
+
+        return result;
+    }
+
+    private async Task<List<int>> GetRankedTagIdsAsync(int? categoryId, int limit)
+    {
+        var usage = _db.PostTags!
+            .Where(postTag => postTag.Post != null &&
+                (!categoryId.HasValue || postTag.Post.CategoryId == categoryId.Value))
+            .GroupBy(postTag => postTag.TagId)
+            .Select(group => new
+            {
+                TagId = group.Key,
+                UsageCount = group.Count(),
+                MostRecentUse = group.Max(postTag => postTag.Post!.UpdatedAt ?? postTag.Post.CreatedAt)
+            });
+
+        return await usage
+            .OrderByDescending(tag => tag.UsageCount)
+            .ThenByDescending(tag => tag.MostRecentUse)
+            .Select(tag => tag.TagId)
+            .Take(limit)
+            .ToListAsync();
     }
 
     private async Task ProcessTagsAsync(Post post, List<int>? selectedTagIds, string? tagsCommaSeparated)

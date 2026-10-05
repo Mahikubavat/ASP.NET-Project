@@ -4,6 +4,7 @@
     ViewData["Title"] = Model?.Title ?? "Post Details";
     var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
     bool isLiked = Model?.Likes != null && Model.Likes.Any(l => l.UserId == currentUserId);
+    bool isBookmarked = ViewBag.IsBookmarked == true;
     int likeCount = Model?.Likes?.Count ?? 0;
     
     // Top-level comments (ParentCommentId == null)
@@ -166,6 +167,22 @@
                 <i class="bi bi-chat-left-text me-1"></i> Comments
                 <span class="badge bg-secondary ms-1">@totalComments</span>
             </a>
+            @if (Model?.Status == BlogPlatform.Models.PostStatus.Published && User.Identity?.IsAuthenticated == true)
+            {
+                <form asp-controller="Bookmarks" asp-action="Toggle" method="post" class="d-inline">
+                    <input type="hidden" name="postId" value="@Model?.Id" />
+                    <button type="submit" class="btn @(isBookmarked ? "btn-warning" : "btn-outline-warning") rounded-pill px-3">
+                        <i class="bi @(isBookmarked ? "bi-bookmark-check-fill" : "bi-bookmark") me-1"></i>
+                        @(isBookmarked ? "Saved" : "Save")
+                    </button>
+                </form>
+            }
+            else if (Model?.Status == BlogPlatform.Models.PostStatus.Published)
+            {
+                <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-outline-warning rounded-pill px-3">
+                    <i class="bi bi-bookmark me-1"></i> Save
+                </a>
+            }
         </div>
 
         <div>

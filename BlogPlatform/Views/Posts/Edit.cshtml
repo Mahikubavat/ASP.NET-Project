@@ -63,8 +63,8 @@
                 <div class="card-body p-4">
                     <div class="mb-3">
                         <label class="form-label fw-semibold d-flex justify-content-between align-items-center mb-2">
-                            <span>Default Topics & Tags</span>
-                            <span class="text-muted smaller" style="font-size:0.8rem;">Click to select or deselect</span>
+                            <span>Popular Tags</span>
+                            <span class="text-muted smaller" style="font-size:0.8rem;">Top 10 popular tags; selected tags remain visible</span>
                         </label>
                         <div class="d-flex flex-wrap gap-2 p-3 bg-light rounded-3 border" id="tagsContainer">
                             @if (defaultTags.Any())
@@ -82,8 +82,11 @@
                             }
                             else
                             {
-                                <span class="text-muted small">No tags defined yet. You can add custom tags below!</span>
+                                <span class="text-muted small">No popular tags yet. You can add custom tags below.</span>
                             }
+                        </div>
+                        <div id="tagSuggestionsError" class="text-danger small mt-2 d-none" role="alert">
+                            Tags could not be refreshed. Please try changing the category again.
                         </div>
 
                         <!-- Hidden multi-select bound to SelectedTagIds -->
@@ -107,7 +110,7 @@
                             Additional Custom Tags (comma separated)
                         </label>
                         <input asp-for="TagsCommaSeparated" class="form-control" placeholder="e.g. dotnet, clean-code, aspnetcore" />
-                        <div class="form-text small">Add any custom tags not in the default list above, separated by commas.</div>
+                        <div class="form-text small">Add any tags not shown above, separated by commas.</div>
                     </div>
                 </div>
             </div>
@@ -184,6 +187,11 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
+        const selectedTagIdsElement = document.getElementById('hiddenSelectedTagIds');
+        const tagsContainer = document.getElementById('tagsContainer');
+        const tagSuggestionsUrl = '@Url.Action("TagSuggestions", "Posts")';
+        let tagRequestNumber = 0;
+
         function toggleTagChip(chip, tagId) {
             chip.classList.toggle('selected');
             var isSel = chip.classList.contains('selected');
@@ -194,14 +202,71 @@
                 icon.className = 'bi bi-plus-circle text-muted me-1';
             }
 
-            var select = document.getElementById('hiddenSelectedTagIds');
-            for (var i = 0; i < select.options.length; i++) {
-                if (select.options[i].value == tagId) {
-                    select.options[i].selected = isSel;
+            for (var i = 0; i < selectedTagIdsElement.options.length; i++) {
+                if (selectedTagIdsElement.options[i].value == tagId) {
+                    selectedTagIdsElement.options[i].selected = isSel;
                     break;
                 }
             }
         }
+
+        document.getElementById('CategoryId').addEventListener('change', async function () {
+            const requestNumber = ++tagRequestNumber;
+            const query = new URLSearchParams();
+            if (this.value) query.set('categoryId', this.value);
+            for (const option of selectedTagIdsElement.selectedOptions) {
+                query.append('selectedTagIds', option.value);
+            }
+
+            try {
+                const response = await fetch(tagSuggestionsUrl + '?' + query.toString());
+                if (!response.ok) throw new Error('Tag suggestions request failed.');
+                const tags = await response.json();
+                if (requestNumber !== tagRequestNumber) return;
+
+                const selectedOptions = Array.from(selectedTagIdsElement.selectedOptions);
+                const selectedIds = new Set(selectedOptions.map(option => option.value));
+                const tagsById = new Map(tags.map(tag => [String(tag.id), tag]));
+                for (const option of selectedOptions) {
+                    if (!tagsById.has(option.value)) {
+                        tags.push({ id: option.value, name: option.textContent });
+                    }
+                }
+
+                tagsContainer.replaceChildren();
+                selectedTagIdsElement.replaceChildren();
+
+                for (const tag of tags) {
+                    const isSelected = selectedIds.has(String(tag.id));
+                    const chip = document.createElement('span');
+                    chip.className = 'tag-pill tag-interactive-chip' + (isSelected ? ' selected' : '');
+                    chip.dataset.tagId = tag.id;
+                    chip.addEventListener('click', () => toggleTagChip(chip, tag.id));
+
+                    const icon = document.createElement('i');
+                    icon.className = isSelected
+                        ? 'bi bi-check-circle-fill text-white me-1'
+                        : 'bi bi-plus-circle text-muted me-1';
+                    chip.append(icon, document.createTextNode(tag.name));
+                    tagsContainer.appendChild(chip);
+
+                    const option = document.createElement('option');
+                    option.value = tag.id;
+                    option.textContent = tag.name;
+                    option.selected = isSelected;
+                    selectedTagIdsElement.appendChild(option);
+                }
+
+                if (tags.length === 0) {
+                    tagsContainer.textContent = 'No tags available yet. Add custom tags below.';
+                }
+                document.getElementById('tagSuggestionsError').classList.add('d-none');
+            } catch (error) {
+                if (requestNumber !== tagRequestNumber) return;
+                document.getElementById('tagSuggestionsError').classList.remove('d-none');
+                console.error(error);
+            }
+        });
 
         // Image Preview
         document.getElementById('featuredImageInput').addEventListener('change', function(e) {
